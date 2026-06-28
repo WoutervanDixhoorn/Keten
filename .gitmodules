@@ -1,0 +1,3 @@
+[submodule "vendor/msock"]
+	path = vendor/msock
+	url = https://github.com/WoutervanDixhoorn/Minimal-Sockets.git

@@ -1,0 +1,36 @@
+# --- Visual Studio ---
+.vs/
+out/
+build/
+*.user
+*.sln
+*.vcxproj
+*.filters
+
+# --- CMake ---
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+*.cmake
+
+# --- Executables & Libraries ---
+*.exe
+*.out
+*.app
+*.lib
+*.a
+*.o
+*.obj
+*.pdb
+*.dll
+*.so
+*.dylib
+
+# --- OS specifieke zooi ---
+.DS_Store
+Thumbs.db
