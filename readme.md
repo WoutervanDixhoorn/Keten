@@ -7,10 +7,10 @@ of this project. To implement the blockchain I am using a set of crypto librarie
 To implement the networking I am going to use my own network library I've written in C a while ago called [`Minimal Sockets`](https://github.com/WoutervanDixhoorn/Minimal-Sockets).
 
 ## Goals
-1. [] Implement core Crypto logic.
-2. [] Implement P2P Networking using [`Minimal Sockets`](https://github.com/WoutervanDixhoorn/Minimal-Sockets).
-3. [] Use the blockchain in some other project/game to facilitate as somekind of currency system.
-4. [] To be found during development....
+1. [ ] Implement core Crypto logic.
+2. [ ] Implement P2P Networking using [`Minimal Sockets`](https://github.com/WoutervanDixhoorn/Minimal-Sockets).
+3. [ ] Use the blockchain in some other project/game to facilitate as somekind of currency system.
+4. [ ] To be found during development....
 
 ### Usage
 To see how the current state of the project is being used, see *examples/* folder!
