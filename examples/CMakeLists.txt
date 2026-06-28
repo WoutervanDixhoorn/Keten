@@ -1,0 +1,2 @@
+add_subdirectory(example_validator)
+add_subdirectory(example_node)

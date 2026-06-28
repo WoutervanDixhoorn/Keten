@@ -41,5 +41,7 @@ int main()
 
 	kimy.keten.addBlock(block1);
 
+	std::println("Success");
+
 	return 0;
 }
