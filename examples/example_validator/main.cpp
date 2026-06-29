@@ -27,7 +27,7 @@ int main()
 	Keten::Transaction transaction;
 	transaction.amount = 10;
 	transaction.sender = wouter.publicKey;
-	transaction.reciever = kimy.publicKey;
+	transaction.receiver = kimy.publicKey;
 
 	Keten::Block block1(1, lastBlock.getHash());
 	block1.addTransaction(transaction);

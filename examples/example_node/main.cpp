@@ -1,23 +1,25 @@
-#include <print>
-#include <string>
+#include "keten.h"
+#include <iostream>
 
-#include "json.hpp"
-using json = nlohmann::json;
+int main(int argc, char* argv[]) {
+    if (argc == 2) {
+        std::string myPort = argv[1];
+        Keten::Node seedNode(myPort);
+        seedNode.Start();
+    }
 
-int main() {
-	std::println("Hello, Node!");
+    else if (argc == 4) {
+        std::string myPort = argv[1];
+        std::string seedIp = argv[2];
+        std::string seedPort = argv[3];
 
-	std::string jsonString = R"(
-		{
-			"Test": 10.0,
-			"Kimy": "Mopje"
-		}	
-	)";
-	json data = json::parse(jsonString);
+        Keten::Node myNode(myPort, seedIp, seedPort);
+        myNode.Start();
+    }
+    else {
+        std::cout << "Usage (Seed): keten <my_port>\n";
+        std::cout << "Usage (Peer): keten <my_port> <seed_ip> <seed_port>\n";
+    }
 
-	double testValue = data["Test"].get<double>();
-	std::string kimyValue = data["Kimy"].get<std::string>();
-	std::println("Test: {}, Kimy: {}", testValue, kimyValue);
-
-	return 0;
+    return 0;
 }

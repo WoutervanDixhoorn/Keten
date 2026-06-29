@@ -33,7 +33,7 @@ namespace Keten {
 
 			ss << m_index << m_prevHash;
 			for (const auto& tx : m_transactions) {
-				ss << tx.sender << tx.reciever << tx.amount;
+				ss << tx.sender << tx.receiver << tx.amount;
 			}
 
 			return ss.str();
