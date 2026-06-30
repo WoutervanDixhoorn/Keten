@@ -12,9 +12,9 @@ namespace Keten {
 	struct Transaction {
 		std::string sender;
 		std::string receiver;
-		double amount;
-
+		long amount;
 		std::string signature;
+		std::string txHash;
 
 		Transaction() = default;
 
@@ -24,6 +24,8 @@ namespace Keten {
 			amount = j.at("amount").get<double>();
 			signature = j.at("signature").get<std::string>();
 		}
+
+		bool operator==(const std::string& hash) { return txHash == hash; }
 
 		std::string toJson() const {
 			json jString = {
@@ -37,9 +39,7 @@ namespace Keten {
 		}
 
 		std::string getRawData() const {
-			std::stringstream ss;
-			ss << sender << receiver << amount;
-			return ss.str();
+			return sender + receiver + std::to_string(amount);
 		}
 	};
 

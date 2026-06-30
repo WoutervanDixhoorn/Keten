@@ -2,13 +2,10 @@
 #include "blockchain.h"
 #include "types.h"
 
+#include "../network/P2PNetwork.h"
+
 #include <string>
 #include <vector>
-#include <thread>
-
-extern "C" {
-	#include "msock.h"
-}
 
 namespace Keten {
 
@@ -20,39 +17,23 @@ namespace Keten {
 	class Node {
 	public:
 		Node(const std::string nodePort, const std::string seedIp = "", const std::string seedPort = "");
-		~Node();
+		~Node() = default;
 
 		void Start();
 
 	private:
-		void initializeP2P();
-
-		void startListenClient();
-		void onNodeReceive(msock_message& msg);
-
-		void startListenServer();
-		static bool onClientNodeConnect(msock_client* client);
-		static bool onClientNodeDisconnect(msock_client* client);
-		static bool onHandleClient(msock_server* server, msock_client* client);
-
 		void handleUserInput();
-
-		bool processIncomingMessage(msock_message& message);
+		void processNetworkMessage();
+		bool processIncomingTransaction(std::string transaction);
 
 	private:
 		NodeIdentity m_id;
+		P2PNetwork m_network;
 		Blockchain m_keten;
-		
+
 		std::vector<Transaction> m_pendingTransactions;
-
-		std::string m_seedIpAddr;
-		std::string m_seedPort;
-		std::string m_nodePort;
-
-		msock_client m_client;
-		msock_server m_server;
-		std::jthread m_serverThread;
-		std::jthread m_clientThread;
+	
+		std::jthread m_messageProcessingThread;
 	};
 
 }
