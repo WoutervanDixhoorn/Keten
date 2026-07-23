@@ -1,28 +1,58 @@
 #include "node.h"
 #include "crypto.h"
+#include "blockManager.h"
+#include "../network/messageFactory.h"
 
 #include <print>
 #include <sstream>
 #include <iostream>
 #include <cstdint>
+#include <chrono>
+
 
 namespace Keten {
 
 	Node::Node(const std::string nodePort, const std::string seedIp /* = ""*/, const std::string seedPort /*= ""*/)
-		: m_network(nodePort, seedIp, seedPort)
+		: m_id(std::make_shared<NodeIdentity>()), m_transactionManager(m_id), m_blockManager(m_id), m_network(nodePort, seedIp, seedPort)
 	{
-		generateKeyPair(m_id.publicKey, m_id.privateKey);
-	
+		generateKeyPair(m_id->publicKey, m_id->privateKey);
 	}
 
-	void Node::Start() {
+	void Node::Start(bool interactive) {
 		std::println("Start Keten Node...");
 
 		m_network.Start();
 		
 		m_messageProcessingThread = std::jthread(&Node::processNetworkMessage, this);
+		m_nodeProcessingThread = std::jthread(&Node::nodeProcessing, this);
 
-		handleUserInput();
+		if(interactive) handleUserInput();
+	}
+
+	void Node::CreateGenesisBlock()
+	{
+		Block genBlock = m_blockManager.CreateGenesisBlock();
+		NetworkMessage genBlockMessage = MessageFactory::CreateNetworkMessage(NodeMessageType::BLOCK, genBlock.toJson(), NetworkMessageType::BROADCAST);
+
+		m_keten.AddAdmin(m_id->publicKey);
+		m_keten.AddBlock(genBlock);
+		m_network.PushMessage(genBlockMessage);
+	}
+
+	long Node::CalculateBalance(const std::string publicKey)
+	{
+		return m_keten.CalculateBalance(publicKey);
+	}
+
+	bool Node::SendTransaction(long amount, std::string receiver)
+	{
+		std::println("Drawfting transaction of {} coins to {}...", amount, receiver.substr(0, 6));
+
+		Transaction tx = m_transactionManager.CreateTransaction(amount, receiver);
+		NetworkMessage txMsg = MessageFactory::CreateNetworkMessage(NodeMessageType::TRANSACTION, tx.toJson(), NetworkMessageType::BROADCAST);
+		m_network.PushMessage(txMsg);
+
+		return true;
 	}
 
 	void Node::handleUserInput() {
@@ -35,39 +65,21 @@ namespace Keten {
 				break;
 			}
 			else if (input == "info") {
-				std::println("My Public Key: {}", m_id.publicKey);
+				std::println("My Public Key: {}", m_id->publicKey);
 			} else if (input.starts_with("send")) {
 				std::istringstream ss(input);
 
 				std::string command;
 				std::string receiverKey;
-				double amount;
+				long amount;
 
 				if (ss >> command >> receiverKey >> amount) {
-					std::println("Drawfting transaction of {} coins to {}...", amount, receiverKey.substr(0, 6));
+					SendTransaction(amount, receiverKey);
 				}
 				else {
 					std::println("Invalid format! Use: send <key> <amount>");
 					continue;
 				}
-
-				Keten::Transaction transaction;
-				transaction.amount = amount;
-				transaction.sender = m_id.publicKey;
-				transaction.receiver = receiverKey;
-
-				std::string transactionHash = calculateHash(transaction.getRawData());
-				std::string signature = signMessage(transactionHash, m_id.privateKey);
-				transaction.signature = signature;
-
-				m_pendingTransactions.push_back(transaction);
-
-				NetworkMessage txMsg = {
-					.payload = transaction.toJson(),
-					.messageType = NetworkMessageType::DIRECT
-				};
-
-				m_network.PushMessage(txMsg);
 			}
 		}
 	}
@@ -83,11 +95,19 @@ namespace Keten {
 
 			switch (message.messageType) {
 				case NodeMessageType::TRANSACTION:
-				default:
 					if (processIncomingTransaction(message.payload)) {
 						NetworkMessage netMessage = {
 							.payload = message.payload,
-							.messageType = NetworkMessageType::BOARDCAST
+							.messageType = NetworkMessageType::BROADCAST
+						};
+						m_network.PushMessage(netMessage);
+					}
+					break;
+				case NodeMessageType::BLOCK:
+					if (processIncomingBlock(message.payload)) {
+						NetworkMessage netMessage = {
+							.payload = message.payload,
+							.messageType = NetworkMessageType::BROADCAST
 						};
 						m_network.PushMessage(netMessage);
 					}
@@ -97,6 +117,37 @@ namespace Keten {
 		}
 	}
 
+	void Node::nodeProcessing()
+	{
+		while (true)
+		{
+			//NOTE: If a treshold is reached a block will get minted and spread over the network!
+			if (m_transactionManager.GetPendingTransactionCount() < 10) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				continue;
+			}
+
+			std::vector<Transaction> flushedTransactions = m_transactionManager.FlushPendingTransactions();
+			Block newBlock = m_blockManager.MintBlock(m_keten.Size(), m_keten.GetLatestBlock().getHash(), flushedTransactions);
+			m_keten.AddBlock(newBlock);
+
+			NetworkMessage blockMsg = MessageFactory::CreateNetworkMessage(NodeMessageType::BLOCK, newBlock.toJson(), NetworkMessageType::BROADCAST);
+			m_network.PushMessage(blockMsg);
+		}
+	}
+
+	
+	//TODO: MakeSeperate classes for handeling different message types that we can register!
+	bool Node::processIncomingBlock(std::string block)
+	{
+		json msgJson = json::parse(block);
+		Block incomingBlock(msgJson);
+
+		std::println("Message with Block from {} ID: {}", incomingBlock.getCreator().substr(0, 6), incomingBlock.getHash().substr(0, 6));
+
+		return m_keten.AddBlock(incomingBlock);
+	}
+
 	bool Node::processIncomingTransaction(std::string transaction)
 	{
 		json msgJson = json::parse(transaction);
@@ -104,25 +155,19 @@ namespace Keten {
 	
 		std::println("Message from {}\nAmount: {}", incomingTransaction.sender.substr(0, 6), incomingTransaction.amount);
 		
-		std::string transactionHash = calculateHash(incomingTransaction.getRawData());
-
-		if (std::find(m_pendingTransactions.begin(), m_pendingTransactions.end(), transactionHash) != m_pendingTransactions.end()) 
-		{
-			std::println("Transaction {} already exists", transactionHash.substr(0, 6));
+		long senderBalance = m_keten.CalculateBalance(incomingTransaction.sender);
+		if (senderBalance < incomingTransaction.amount) {
+			std::println("Transaction REJECTED: Sender only has {} coins, tried to send {}!", senderBalance, incomingTransaction.amount);
 			return false;
 		}
-		incomingTransaction.txHash = transactionHash;
 
-		std::string sender = incomingTransaction.sender;
-		std::string signature = incomingTransaction.signature;
-
-		if (!validateSignature(transactionHash, signature, sender)) {
+		if (!m_transactionManager.ValidateTransaction(incomingTransaction)) {
 			std::println("Transaction is not valid!");
 			return false;
 		}
 
-		m_pendingTransactions.push_back(incomingTransaction);
-
+		m_transactionManager.AddTransaction(incomingTransaction);
+		
 		std::println("Transaction is valid!");
 
 		return true;

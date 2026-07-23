@@ -10,18 +10,20 @@ namespace Keten {
 
 	class Blockchain {
 	public:
-		Blockchain();
+		Blockchain() = default;
 
-		bool addBlock(Block newBlock);
-		const Block& getLatestBlock() const { return m_chain.back(); }
+		long CalculateBalance(const std::string& publicKey);
 
-		void addAdmin(const std::string& adminPublicKey);
+		bool AddBlock(Block newBlock);
+		inline const Block& GetLatestBlock() const { return m_chain.back(); }
+		inline const size_t Size() const { return m_chain.size(); }
+
+		void AddAdmin(const std::string& adminPublicKey);
 
 	private:
 		std::vector<Block> m_chain;
 		std::vector<std::string> m_adminKeys;
 
-		void createGenesisBlock();
 		bool isValidHash(const Block& b);
 	};
 

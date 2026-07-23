@@ -8,7 +8,7 @@ file(GLOB_RECURSE KETEN_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/s
 add_library(keten STATIC ${KETEN_SOURCES} 
     "${CMAKE_CURRENT_SOURCE_DIR}/vendor/monocypher/monocypher.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/vendor/msock/src/msock.c"
-)
+ "src/keten/blockManager.h")
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -29,3 +29,4 @@ else()
 endif()
 
 add_subdirectory(examples)
+add_subdirectory(tests)

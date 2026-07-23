@@ -6,7 +6,8 @@ namespace Keten {
 
 	enum NetworkMessageType {
 		DIRECT,
-		BOARDCAST
+		BROADCAST,
+		
 	};
 
 	struct NetworkMessage {
@@ -16,7 +17,8 @@ namespace Keten {
 	};
 
 	enum NodeMessageType {
-		TRANSACTION
+		TRANSACTION,
+		BLOCK
 	};
 
 	struct NodeMessage {

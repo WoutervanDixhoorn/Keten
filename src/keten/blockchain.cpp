@@ -7,12 +7,8 @@
 
 namespace Keten {
 
-	Blockchain::Blockchain() {
-		createGenesisBlock();
-	}
-
-	bool Blockchain::addBlock(Block newBlock) {
-		if (newBlock.getPrevHash() != m_chain.back().getHash()) {
+	bool Blockchain::AddBlock(Block newBlock) {
+		if (m_chain.size() > 0 && newBlock.getPrevHash() != m_chain.back().getHash()) {
 			std::println("REJECTED: Chain link broken.");
 			return false;
 		}
@@ -37,16 +33,26 @@ namespace Keten {
 		return true;
 	}
 	
-	void Blockchain::addAdmin(const std::string& adminPublicKey) {
+	long Blockchain::CalculateBalance(const std::string& publicKey)
+	{
+		long balance = 0;
+
+		for (const auto& block : m_chain) {
+			const auto& transactions = block.getTransactions();
+
+			for (const auto& tx : transactions) {
+				if (tx.receiver == publicKey) balance += tx.amount;
+				if (tx.sender == publicKey) balance -= tx.amount;
+			}
+		}
+
+		return balance;
+	}
+
+	void Blockchain::AddAdmin(const std::string& adminPublicKey) {
 		if (std::find(m_adminKeys.begin(), m_adminKeys.end(), adminPublicKey) == m_adminKeys.end()) {
 			m_adminKeys.push_back(adminPublicKey);
 		}
-	}
-
-	void Blockchain::createGenesisBlock() {
-		Block genesis(0, "0");
-		genesis.setHash("0000genesis");
-		m_chain.push_back(genesis);
 	}
 
 	bool Blockchain::isValidHash(const Block& b) {

@@ -16,13 +16,13 @@ int main()
 	Keten::generateKeyPair(wouter.publicKey, wouter.privateKey);
 	Keten::generateKeyPair(kimy.publicKey, kimy.privateKey);
 
-	wouter.keten.addAdmin(kimy.publicKey);
-	wouter.keten.addAdmin(wouter.publicKey);
-	kimy.keten.addAdmin(wouter.publicKey);
-	kimy.keten.addAdmin(kimy.publicKey);
+	wouter.keten.AddAdmin(kimy.publicKey);
+	wouter.keten.AddAdmin(wouter.publicKey);
+	kimy.keten.AddAdmin(wouter.publicKey);
+	kimy.keten.AddAdmin(kimy.publicKey);
 
 	//Is the genisisBlock
-	Keten::Block lastBlock = wouter.keten.getLatestBlock();
+	Keten::Block lastBlock = wouter.keten.GetLatestBlock();
 
 	Keten::Transaction transaction;
 	transaction.amount = 10;
@@ -39,7 +39,7 @@ int main()
 
 	block1.setCreator(wouter.publicKey);
 
-	kimy.keten.addBlock(block1);
+	kimy.keten.AddBlock(block1);
 
 	std::println("Success");
 

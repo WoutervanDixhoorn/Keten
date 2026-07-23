@@ -1,0 +1,2 @@
+add_subdirectory(test_node)
+add_subdirectory(test_economy)

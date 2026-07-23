@@ -1,6 +1,7 @@
 #pragma once
 
 #include <thread>
+#include <unordered_map>
 
 #include "messageQueue.h"
 #include "messageTypes.h"
@@ -48,6 +49,10 @@ namespace Keten {
 		std::jthread m_serverThread;
 		std::jthread m_clientThread;
 		std::jthread m_nodeMessageThread;
+
+
+		const size_t MAX_MESSAGE_SIZE = 8192;
+		std::unordered_map<msock_client*, std::string> m_clientBuffers;
 	};
 
 }

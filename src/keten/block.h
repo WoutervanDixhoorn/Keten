@@ -12,6 +12,35 @@ namespace Keten {
 			: m_index(index), m_prevHash(prevHash)
 		{}
 
+		Block(const nlohmann::json& j) {
+			m_index = j.at("index").get<uint32_t>();
+			m_prevHash = j.at("prevHash").get<std::string>();
+			m_hash = j.at("hash").get<std::string>();
+			m_creator = j.at("creator").get<std::string>();
+			m_signature = j.at("signature").get<std::string>();
+
+			for (const auto& txJson : j.at("transactions")) {
+				m_transactions.push_back(Transaction(txJson));
+			}
+		}
+
+		std::string toJson() const {
+			json jString = {
+				{"index", m_index},
+				{"prevHash", m_prevHash},
+				{"hash", m_hash},
+				{"creator", m_creator},
+				{"signature", m_signature},
+				{"transactions", json::array()}
+			};
+
+			for (const auto& tx : m_transactions) {
+				jString["transactions"].push_back(json::parse(tx.toJson()));
+			}
+
+			return jString.dump();
+		}
+
 		void setHash(std::string hash) {
 			m_hash = hash;
 		}
@@ -31,9 +60,9 @@ namespace Keten {
 		std::string getRawData() const {
 			std::stringstream ss;
 
-			ss << m_index << m_prevHash;
+			ss << m_index << m_prevHash << m_creator;
 			for (const auto& tx : m_transactions) {
-				ss << tx.sender << tx.receiver << tx.amount;
+				ss << tx.txHash;
 			}
 
 			return ss.str();
@@ -43,7 +72,19 @@ namespace Keten {
 			m_transactions.push_back(tx);
 		}
 
-		void setSignature(const std::string& signature) {
+		const std::vector<Transaction> getTransactions() const {
+			return m_transactions;
+		}
+
+		const uint32_t getIndex() const {
+			return m_index;
+		}
+
+		void setIndex(uint32_t index) {
+			m_index = index;
+		}
+
+		void setSignature(const std::string signature) {
 			m_signature = signature;
 		}
 

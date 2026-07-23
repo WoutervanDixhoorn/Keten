@@ -1,5 +1,7 @@
 #include "P2PNetwork.h"
 
+#include "messageFactory.h"
+
 #include <print>
 #include <cstdint>
 #include <utility>
@@ -76,12 +78,13 @@ namespace Keten {
 			}
 
 			msock_message outMsg;
-			outMsg.buffer = message.payload.data();
-			outMsg.size = message.payload.size();
-			outMsg.len = message.payload.length();
+			std::string safeMsgPayload = message.payload.append("\n");
+			outMsg.buffer = safeMsgPayload.data();
+			outMsg.size = safeMsgPayload.size();
+			outMsg.len = safeMsgPayload.length();
 
 			switch (message.messageType) {
-			case NetworkMessageType::BOARDCAST:
+			case NetworkMessageType::BROADCAST:
 				msock_server_broadcast(&m_server, &outMsg, m_client.socket_state == MSOCK_STATE_CONNECTED ? &m_client : nullptr);
 				break;
 			case NetworkMessageType::DIRECT:
@@ -105,6 +108,7 @@ namespace Keten {
 			.buffer = receive_buffer,
 			.size = sizeof(receive_buffer)
 		};
+
 		while (msock_client_is_connected(&m_client)) {
 
 			ssize_t bytes = msock_client_receive(&m_client, &msg);
@@ -127,12 +131,20 @@ namespace Keten {
 	}
 
 	void P2PNetwork::onNodeReceive(msock_message& msg) {
-		NodeMessage outMsg = {
-			.payload = std::move(msg.buffer),
-			.messageType = NodeMessageType::TRANSACTION
-		};
+		std::stringstream payload(msg.buffer);
+		std::string frame;
 
-		m_outboundQueue.Push(outMsg);
+		while (std::getline(payload, frame, '\n')) {
+			if (frame.empty()) continue;
+
+			std::optional<NodeMessage> parsedMsg = MessageFactory::ParseNetworkFrame(frame);
+			if(parsedMsg.has_value()) {
+				m_outboundQueue.Push(parsedMsg.value());
+			}
+			else {
+				std::println("[CLIENT] Invalid JSON envelope received.");
+			}
+		}
 	}
 
 	void P2PNetwork::startListenServer() {
@@ -159,6 +171,9 @@ namespace Keten {
 
 	bool P2PNetwork::onClientNodeDisconnect(msock_client* client) {
 		std::println("[SERVER] Client just disconnected");
+		auto* net = static_cast<P2PNetwork*>(client->userdata);
+		net->m_clientBuffers.erase(client);
+
 		return true;
 	}
 
@@ -183,15 +198,33 @@ namespace Keten {
 			return true;
 		}
 
-		std::println("[SERVER] Received message");
+		P2PNetwork* net = static_cast<P2PNetwork*>(server->userdata);
+		net->m_clientBuffers[client].append(txMsg.buffer);
 
-		NodeMessage outMsg = {
-			.payload = std::string(txMsg.buffer, bytes),
-			.messageType = NodeMessageType::TRANSACTION
-		};
+		if (net->m_clientBuffers[client].size() > net->MAX_MESSAGE_SIZE) {
+			std::println("[SECURITY] Client exceeded max buffer size! Dropping connection.");
+			net->m_clientBuffers.erase(client);
+			return false;
+		}
 
-		static_cast<P2PNetwork*>(server->userdata)->m_outboundQueue.Push(outMsg);
+		ssize_t pos;
 
+		while ((pos = net->m_clientBuffers[client].find('\n')) != std::string::npos)
+		{
+			std::string frame = net->m_clientBuffers[client].substr(0, pos);
+			net->m_clientBuffers[client].erase(0, pos + 1);
+
+			if (!frame.empty()) {
+				std::optional<NodeMessage> parsedMsg = MessageFactory::ParseNetworkFrame(frame);
+				if (parsedMsg.has_value()) {
+					net->m_outboundQueue.Push(parsedMsg.value());
+				}
+				else {
+					std::println("[SECURITY] Invalid JSON envelope received. Dropping frame.");
+				}
+			}
+		}
+		
 		return true;
 	}
 }
