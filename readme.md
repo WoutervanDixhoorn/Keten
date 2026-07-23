@@ -11,7 +11,7 @@ To implement the networking I am going to use my own network library I've writte
 2. [x] Implement P2P Networking using [`Minimal Sockets`](https://github.com/WoutervanDixhoorn/Minimal-Sockets).
 3. [ ] Use the blockchain in some other project/game to facilitate as somekind of currency system.
 4. [ ] Swap the std::jthread with coroutines from C++ 20.
-5. [ ] 4. [ ] To be found during development....
+5. [ ] To be found during development....
 
 ### Usage
 To see how the current state of the project is being used, see *examples/* folder!
