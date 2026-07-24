@@ -1,14 +1,20 @@
 #include "blockchain.h"
+#include "utility/crypto.h"
 
 #include <print>
 #include <algorithm>
 
-#include "crypto.h"
-
 namespace Keten {
 
+	const Block& Blockchain::GetLatestBlock() const {
+		if (m_chain.empty()) {
+			throw std::runtime_error("FATAL: Cannot get latest block, blockchain is entirely empty!");
+		}
+		return m_chain.back();
+	}
+
 	bool Blockchain::AddBlock(Block newBlock) {
-		if (m_chain.size() > 0 && newBlock.getPrevHash() != m_chain.back().getHash()) {
+		if (m_chain.size() > 0 && newBlock.prevHash != m_chain.back().hash) {
 			std::println("REJECTED: Chain link broken.");
 			return false;
 		}
@@ -18,16 +24,18 @@ namespace Keten {
 			return false;
 		}
 	
-		std::string creatorPublicKey = newBlock.getCreator();
+		std::string creatorPublicKey = newBlock.creator;
 		if (std::find(m_adminKeys.begin(), m_adminKeys.end(), creatorPublicKey) == m_adminKeys.end()) {
 			std::println("REJECTED: Creator is not on the admin VIP list.");
 			return false;
 		}
 
-		if (!validateSignature(newBlock.getHash(), newBlock.getSignature(), creatorPublicKey)) {
+		if (!validateSignature(newBlock.hash, newBlock.signature, creatorPublicKey)) {
 			std::println("REJECTED: Signature is invalid or forged.");
 			return false;
 		}
+
+		std::lock_guard<std::mutex> guard(m_chainMutex);
 
 		m_chain.push_back(newBlock);
 		return true;
@@ -38,7 +46,7 @@ namespace Keten {
 		long balance = 0;
 
 		for (const auto& block : m_chain) {
-			const auto& transactions = block.getTransactions();
+			const auto& transactions = block.transactions;
 
 			for (const auto& tx : transactions) {
 				if (tx.receiver == publicKey) balance += tx.amount;
@@ -56,7 +64,7 @@ namespace Keten {
 	}
 
 	bool Blockchain::isValidHash(const Block& b) {
-		return b.getHash() == calculateHash(b.getRawData());
+		return b.hash == calculateHash(b.getRawData());
 	}
 
 }

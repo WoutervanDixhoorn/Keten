@@ -1,6 +1,6 @@
 #include "transactionManager.h"
 
-#include "crypto.h"
+#include "utility/crypto.h"
 
 #include "json.hpp"
 
@@ -10,14 +10,16 @@ namespace Keten {
 	{
 		Keten::Transaction transaction;
 		transaction.amount = amount;
-		transaction.sender = m_id->publicKey;
+		transaction.sender = m_id.publicKey;
 		transaction.receiver = receiver;
 		transaction.nonce = ++m_transactionNonce;
 
 		std::string transactionHash = calculateHash(transaction.getRawData());
-		std::string signature = signMessage(transactionHash, m_id->privateKey);
+		std::string signature = signMessage(transactionHash, m_id.privateKey);
 		transaction.signature = signature;
 		transaction.txHash = transactionHash;
+
+		std::lock_guard<std::mutex> guard(m_pendingTransactionsMutex);
 
 		m_pendingTransactions.push_back(transaction);
 
@@ -47,11 +49,15 @@ namespace Keten {
 
 	void TransactionManager::AddTransaction(Transaction tx)
 	{
+		std::lock_guard<std::mutex> guard(m_pendingTransactionsMutex);
+
 		m_pendingTransactions.push_back(tx);
 	}
 
 	const std::vector<Transaction> TransactionManager::FlushPendingTransactions()
 	{
+		std::lock_guard<std::mutex> guard(m_pendingTransactionsMutex);
+
 		std::vector<Transaction> transactions = m_pendingTransactions;
 		m_pendingTransactions.clear();
 		return transactions;

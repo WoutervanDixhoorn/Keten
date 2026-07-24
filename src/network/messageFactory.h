@@ -1,21 +1,21 @@
 #pragma once
-
 #include "messageTypes.h"
-#include <optional>
 
 #include "json.hpp"
-using json = nlohmann::json;
+
+#include <optional>
 
 namespace Keten {
 
 	class MessageFactory {
 	public:
 
-		static NetworkMessage CreateNetworkMessage(NodeMessageType nodeType, const std::string& jsonPayload, NetworkMessageType networkType)
+		template <typename T>
+		static NetworkMessage CreateNetworkMessage(NodeMessageType nodeType, const T& payloadData, NetworkMessageType networkType)
 		{
-			json envelope;
+			nlohmann::json envelope;
 			envelope["type"] = static_cast<int>(nodeType);
-			envelope["data"] = json::parse(jsonPayload)  ;
+			envelope["data"] = payloadData;
 
 			NetworkMessage msg = {
 				envelope.dump() + '\n',
@@ -28,7 +28,7 @@ namespace Keten {
 		static std::optional<NodeMessage> ParseNetworkFrame(const std::string frame)
 		{
 			try {
-				json parsed = json::parse(frame);
+				nlohmann::json parsed = nlohmann::json::parse(frame);
 
 				if (!parsed.contains("type") || !parsed["type"].is_number_integer() || !parsed.contains("data")) {
 					return std::nullopt;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "network/messageTypes.h"
+
 #include <string>
 #include <variant>
 

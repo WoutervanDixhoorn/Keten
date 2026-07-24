@@ -7,7 +7,7 @@ namespace Keten {
 	enum NetworkMessageType {
 		DIRECT,
 		BROADCAST,
-		
+
 	};
 
 	struct NetworkMessage {

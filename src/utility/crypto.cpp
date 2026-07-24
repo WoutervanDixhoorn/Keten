@@ -1,15 +1,14 @@
 #include "crypto.h"
 
+#include "monocypher.h"
+#include "picosha2.h"
+
 #include <cstdint>
 #include <vector>
 #include <sstream>
 #include <random>
 
-#include "monocypher.h"
-
 namespace Keten {
-
-	
 
 	void generateKeyPair(std::string& out_publicKey, std::string& out_privateKey) 
 	{

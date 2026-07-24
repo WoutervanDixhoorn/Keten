@@ -1,12 +1,8 @@
 #pragma once
 
+#include "models/block.h"
+
 #include <string>
-#include <vector>
-
-#include "monocypher.h"
-#include "picosha2.h"
-
-#include "block.h"
 
 namespace Keten {
 

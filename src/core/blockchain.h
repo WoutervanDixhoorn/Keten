@@ -1,10 +1,9 @@
 #pragma once
 
+#include "models/block.h"
+
 #include <vector>
-
-#include "picosha2.h"
-
-#include "block.h"
+#include <mutex>
 
 namespace Keten {
 
@@ -15,12 +14,15 @@ namespace Keten {
 		long CalculateBalance(const std::string& publicKey);
 
 		bool AddBlock(Block newBlock);
-		inline const Block& GetLatestBlock() const { return m_chain.back(); }
+		const Block& GetLatestBlock() const;
+
 		inline const size_t Size() const { return m_chain.size(); }
 
 		void AddAdmin(const std::string& adminPublicKey);
 
 	private:
+		std::mutex m_chainMutex;
+
 		std::vector<Block> m_chain;
 		std::vector<std::string> m_adminKeys;
 

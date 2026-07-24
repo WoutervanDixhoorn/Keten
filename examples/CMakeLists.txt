@@ -1,2 +1,1 @@
-add_subdirectory(example_validator)
-add_subdirectory(example_node)
+add_subdirectory(cli_node)

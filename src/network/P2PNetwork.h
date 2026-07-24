@@ -1,14 +1,14 @@
 #pragma once
 
-#include <thread>
-#include <unordered_map>
-
 #include "messageQueue.h"
 #include "messageTypes.h"
 
 extern "C" {
 	#include "msock.h"
 }
+
+#include <thread>
+#include <unordered_map>
 
 namespace Keten {
 

@@ -1,2 +1,2 @@
-add_subdirectory(test_node)
-add_subdirectory(test_economy)
+add_subdirectory(economy_test)
+add_subdirectory(validator_test)

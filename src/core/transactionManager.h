@@ -1,18 +1,25 @@
 #pragma once
+#include "models/identity.h"
+#include "models/transaction.h"
 
-#include "types.h"
 #include "../network/messageTypes.h"
+
+#include <cstdint>
+#include <vector>
+#include <mutex>
 
 namespace Keten {
 
 	class TransactionManager {
 	private:
-		std::shared_ptr<NodeIdentity> m_id;
+		NodeIdentity& m_id;
 		
 		uint64_t m_transactionNonce = 0;
 		std::vector<Transaction> m_pendingTransactions;
+
+		std::mutex m_pendingTransactionsMutex;
 	public:
-		TransactionManager(std::shared_ptr<NodeIdentity> id) : m_id(id) {};
+		TransactionManager(NodeIdentity& id) : m_id(id) {};
 
 		Transaction CreateTransaction(long amount, std::string receiver);
 		bool ValidateTransaction(Transaction tx);
