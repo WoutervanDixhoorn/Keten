@@ -10,7 +10,8 @@ namespace Keten {
 	public:
 		MessageQueue() = default;
 
-		bool TryPop(T& outMessage) {
+		bool TryPop(T& outMessage)
+		{
 			std::lock_guard<std::mutex> lock(m_queueMutex);
 			if (m_queue.empty()) return false;
 			
@@ -19,7 +20,8 @@ namespace Keten {
 			return true;
 		}
 
-		void Push(T& message) {
+		void Push(const T& message) 
+		{
 			std::lock_guard<std::mutex> lock(m_queueMutex);
 			m_queue.push(message);
 		}

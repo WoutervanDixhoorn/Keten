@@ -14,8 +14,8 @@ namespace Keten {
 	public:
 		BlockManager(NodeIdentity& id) : m_id(id) {};
 
-		Block CreateGenesisBlock();
-		Block MintBlock(const uint32_t nextBlockIndex, const std::string prevBlockHash, std::vector<Transaction> transaction);
+		const Block CreateGenesisBlock() const;
+		const Block MintBlock(const uint32_t nextBlockIndex, const std::string& prevBlockHash, std::vector<Transaction>& transaction) const;
 	};
 
 }

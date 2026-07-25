@@ -8,9 +8,9 @@
 #include <sstream>
 #include <random>
 
-namespace Keten {
+namespace Keten::Crypto { 
 
-	void generateKeyPair(std::string& out_publicKey, std::string& out_privateKey) 
+	void generateKeyPair(std::string& out_publicKey, std::string& out_privateKey)
 	{
 		uint8_t seed[32];
 		uint8_t privateKey[64];
@@ -22,7 +22,7 @@ namespace Keten {
 		}
 
 		crypto_eddsa_key_pair(privateKey, publicKey, seed);
-		
+
 		picosha2::bytes_to_hex_string(privateKey, privateKey + 64, out_privateKey);
 		picosha2::bytes_to_hex_string(publicKey, publicKey + 32, out_publicKey);
 	}
@@ -69,4 +69,5 @@ namespace Keten {
 		picosha2::hash256(input.begin(), input.end(), hash.begin(), hash.end());
 		return picosha2::bytes_to_hex_string(hash.begin(), hash.end());
 	}
+
 }

@@ -21,12 +21,12 @@ namespace Keten {
 	public:
 		TransactionManager(NodeIdentity& id) : m_id(id) {};
 
-		Transaction CreateTransaction(long amount, std::string receiver);
-		bool ValidateTransaction(Transaction tx);
-		void AddTransaction(Transaction tx);
+		Transaction CreateTransaction(const long amount, const std::string& receiver);
+		bool ValidateTransaction(Transaction tx) const;
+		void AddTransaction(const Transaction tx);
 
 		const std::vector<Transaction> FlushPendingTransactions();
-		inline size_t GetPendingTransactionCount() { return m_pendingTransactions.size(); }
+		const size_t GetPendingTransactionCount();
 	};
 
 }

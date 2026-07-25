@@ -4,9 +4,9 @@
 
 namespace Keten {
 
-	typedef struct {
+	struct NodeIdentity {
 		std::string publicKey;
 		std::string privateKey;
-	} NodeIdentity;
+	};
 
 }

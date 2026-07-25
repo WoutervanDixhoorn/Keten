@@ -4,7 +4,7 @@
 
 #include <string>
 
-namespace Keten {
+namespace Keten::Crypto {
 
 	void generateKeyPair(std::string& out_publicKey, std::string& out_privateKey);
 	std::string signMessage(const std::string& messageHash, const std::string& privateKey);

@@ -17,32 +17,40 @@ namespace Keten {
 		Blockchain& m_keten;
 		P2PNetwork& m_network;
 		TransactionManager& m_transactionManager;
+
 	public:
 		TransactionProcessor(TransactionManager& txManager, Blockchain& keten, P2PNetwork& network) :
 			m_keten(keten), m_network(network), m_transactionManager(txManager)
-		{};
+		{}
 
-		virtual bool ProcessMessage(const MessageTypes& message) override {
+		virtual bool ProcessMessage(const MessageTypes& message) override 
+		{
 			const NodeMessage* nodeMsg = std::get_if<NodeMessage>(&message);
 
-			if (!nodeMsg) {
+			if (!nodeMsg)
+			{
 				return false;
 			}
 
 			const NodeMessage& incomingMsg = *nodeMsg;
-			if (incomingMsg.messageType != NodeMessageType::TRANSACTION) return false;
+			if (incomingMsg.messageType != NodeMessageType::TRANSACTION)
+			{
+				return false;
+			}
 
 			Transaction incomingTransaction = nlohmann::json::parse(incomingMsg.payload).get<Transaction>();
 
 			std::println("Message from {}\nAmount: {}", incomingTransaction.sender.substr(0, 6), incomingTransaction.amount);
 
 			long senderBalance = m_keten.CalculateBalance(incomingTransaction.sender);
-			if (senderBalance < incomingTransaction.amount) {
+			if (senderBalance < incomingTransaction.amount)
+			{
 				std::println("Transaction REJECTED: Sender only has {} coins, tried to send {}!", senderBalance, incomingTransaction.amount);
 				return false;
 			}
 
-			if (!m_transactionManager.ValidateTransaction(incomingTransaction)) {
+			if (!m_transactionManager.ValidateTransaction(incomingTransaction)) 
+			{
 				std::println("Transaction is not valid!");
 				return false;
 			}

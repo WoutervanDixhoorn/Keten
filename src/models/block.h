@@ -17,7 +17,7 @@ namespace Keten {
 		std::string signature;
 		std::vector<Transaction> transactions;
 
-		std::string getRawData() const {
+		const std::string getRawData() const {
 			std::stringstream ss;
 			ss << index << prevHash << creator;
 			for (const auto& tx : transactions) {

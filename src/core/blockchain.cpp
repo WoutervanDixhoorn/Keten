@@ -6,31 +6,29 @@
 
 namespace Keten {
 
-	const Block& Blockchain::GetLatestBlock() const {
-		if (m_chain.empty()) {
-			throw std::runtime_error("FATAL: Cannot get latest block, blockchain is entirely empty!");
-		}
-		return m_chain.back();
-	}
-
-	bool Blockchain::AddBlock(Block newBlock) {
-		if (m_chain.size() > 0 && newBlock.prevHash != m_chain.back().hash) {
+	bool Blockchain::AddBlock(Block newBlock) 
+	{
+		if (m_chain.size() > 0 && newBlock.prevHash != m_chain.back().hash) 
+		{
 			std::println("REJECTED: Chain link broken.");
 			return false;
 		}
 
-		if (!isValidHash(newBlock)) {
+		if (!isValidHash(newBlock)) 
+		{
 			std::println("REJECTED: Hash does not match data.");
 			return false;
 		}
 	
 		std::string creatorPublicKey = newBlock.creator;
-		if (std::find(m_adminKeys.begin(), m_adminKeys.end(), creatorPublicKey) == m_adminKeys.end()) {
+		if (std::find(m_adminKeys.begin(), m_adminKeys.end(), creatorPublicKey) == m_adminKeys.end()) 
+		{
 			std::println("REJECTED: Creator is not on the admin VIP list.");
 			return false;
 		}
 
-		if (!validateSignature(newBlock.hash, newBlock.signature, creatorPublicKey)) {
+		if (!Crypto::validateSignature(newBlock.hash, newBlock.signature, creatorPublicKey))
+		{
 			std::println("REJECTED: Signature is invalid or forged.");
 			return false;
 		}
@@ -40,15 +38,25 @@ namespace Keten {
 		m_chain.push_back(newBlock);
 		return true;
 	}
-	
-	long Blockchain::CalculateBalance(const std::string& publicKey)
+
+	void Blockchain::AddAdmin(const std::string& adminPublicKey)
+	{
+		if (std::find(m_adminKeys.begin(), m_adminKeys.end(), adminPublicKey) == m_adminKeys.end())
+		{
+			m_adminKeys.push_back(adminPublicKey);
+		}
+	}
+
+	const long Blockchain::CalculateBalance(const std::string& publicKey) const
 	{
 		long balance = 0;
 
-		for (const auto& block : m_chain) {
+		for (const auto& block : m_chain) 
+		{
 			const auto& transactions = block.transactions;
 
-			for (const auto& tx : transactions) {
+			for (const auto& tx : transactions) 
+			{
 				if (tx.receiver == publicKey) balance += tx.amount;
 				if (tx.sender == publicKey) balance -= tx.amount;
 			}
@@ -57,14 +65,23 @@ namespace Keten {
 		return balance;
 	}
 
-	void Blockchain::AddAdmin(const std::string& adminPublicKey) {
-		if (std::find(m_adminKeys.begin(), m_adminKeys.end(), adminPublicKey) == m_adminKeys.end()) {
-			m_adminKeys.push_back(adminPublicKey);
+	const Block& Blockchain::GetLatestBlock() const
+	{
+		if (m_chain.empty()) 
+		{
+			throw std::runtime_error("FATAL: Cannot get latest block, blockchain is entirely empty!");
 		}
+		return m_chain.back();
 	}
 
-	bool Blockchain::isValidHash(const Block& b) {
-		return b.hash == calculateHash(b.getRawData());
+	const size_t Blockchain::Size() const
+	{
+		return m_chain.size();
+	}
+
+	bool Blockchain::isValidHash(const Block& b) 
+	{
+		return b.hash == Crypto::calculateHash(b.getRawData());
 	}
 
 }

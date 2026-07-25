@@ -17,16 +17,17 @@
 
 namespace Keten {
 
-	Node::Node(const std::string nodePort, const std::string seedIp /* = ""*/, const std::string seedPort /*= ""*/)
+	Node::Node(const std::string& nodePort, const std::string& seedIp, const std::string& seedPort)
 		: m_id(), m_transactionManager(m_id), m_blockManager(m_id), m_network(nodePort, seedIp, seedPort), m_keten()
 	{
-		generateKeyPair(m_id.publicKey, m_id.privateKey);
+		Crypto::generateKeyPair(m_id.publicKey, m_id.privateKey);
 
 		m_messageTypeProcessorMap[NodeMessageType::TRANSACTION] = std::make_unique<TransactionProcessor>(m_transactionManager, m_keten, m_network);
 		m_messageTypeProcessorMap[NodeMessageType::BLOCK] = std::make_unique<BlockProcessor>(m_keten, m_network);
 	}
 
-	void Node::Start(bool interactive) {
+	void Node::Start(bool interactive) 
+	{
 		std::println("Start Keten Node...");
 
 		m_network.Start();
@@ -35,6 +36,17 @@ namespace Keten {
 		m_nodeProcessingThread = std::jthread(&Node::nodeProcessing, this);
 
 		if(interactive) handleUserInput();
+	}
+
+	bool Node::SendTransaction(long amount, std::string& receiver)
+	{
+		std::println("Drawfting transaction of {} coins to {}...", amount, receiver.substr(0, 6));
+
+		Transaction tx = m_transactionManager.CreateTransaction(amount, receiver);
+		NetworkMessage txMsg = MessageFactory::CreateNetworkMessage(NodeMessageType::TRANSACTION, tx, NetworkMessageType::BROADCAST);
+		m_network.PushMessage(txMsg);
+
+		return true;
 	}
 
 	void Node::CreateGenesisBlock()
@@ -47,28 +59,28 @@ namespace Keten {
 		m_network.PushMessage(genBlockMessage);
 	}
 
-	uint32_t Node::GetChainHeight()
+	uint32_t Node::GetChainHeight() const
 	{
 		return m_keten.Size();
 	}
 
-	long Node::CalculateBalance(const std::string publicKey)
+	long Node::CalculateBalance(const std::string& publicKey) const
 	{
 		return m_keten.CalculateBalance(publicKey);
 	}
 
-	bool Node::SendTransaction(long amount, std::string receiver)
+	void Node::AddAdmin(const std::string& publicKey)
 	{
-		std::println("Drawfting transaction of {} coins to {}...", amount, receiver.substr(0, 6));
-
-		Transaction tx = m_transactionManager.CreateTransaction(amount, receiver);
-		NetworkMessage txMsg = MessageFactory::CreateNetworkMessage(NodeMessageType::TRANSACTION, tx, NetworkMessageType::BROADCAST);
-		m_network.PushMessage(txMsg);
-
-		return true;
+		m_keten.AddAdmin(publicKey);
 	}
 
-	void Node::handleUserInput() {
+	const std::string& Node::GetPublicKey() const
+	{
+		return m_id.publicKey;
+	}
+
+	void Node::handleUserInput() 
+	{
 		std::string input;
 		while (true) {
 			std::getline(std::cin, input);
@@ -97,16 +109,20 @@ namespace Keten {
 		}
 	}
 
-	void Node::processNetworkMessage() {
-		while(true) {
+	void Node::processNetworkMessage()
+	{
+		while(true) 
+		{
 
 			NodeMessage message;
-			if (!m_network.PollMessage(message)) {
+			if (!m_network.PollMessage(message)) 
+			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 				continue;
 			}
 
-			if (m_messageTypeProcessorMap.contains(message.messageType)) {
+			if (m_messageTypeProcessorMap.contains(message.messageType)) 
+			{
 				m_messageTypeProcessorMap[message.messageType]->ProcessMessage(message);
 			}
 
@@ -118,7 +134,8 @@ namespace Keten {
 		while (true)
 		{
 			//NOTE: If a treshold is reached a block will get minted and spread over the network!
-			if (m_transactionManager.GetPendingTransactionCount() < 10) {
+			if (m_transactionManager.GetPendingTransactionCount() < 10)
+			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 				continue;
 			}

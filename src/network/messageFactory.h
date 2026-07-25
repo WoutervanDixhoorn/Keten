@@ -27,22 +27,25 @@ namespace Keten {
 
 		static std::optional<NodeMessage> ParseNetworkFrame(const std::string frame)
 		{
-			try {
+			try 
+			{
 				nlohmann::json parsed = nlohmann::json::parse(frame);
 
-				if (!parsed.contains("type") || !parsed["type"].is_number_integer() || !parsed.contains("data")) {
+				if (!parsed.contains("type") || !parsed["type"].is_number_integer() || !parsed.contains("data"))
+				{
 					return std::nullopt;
 				}
 
 				int typeInt = parsed["type"];
 				NodeMessageType msgType = static_cast<NodeMessageType>(typeInt);
 
-				return NodeMessage{
+				return NodeMessage {
 					.payload = parsed["data"].dump(),
 					.messageType = msgType
 				};
 			}
-			catch (const std::exception& e) {
+			catch (const std::exception& e)
+			{
 				return std::nullopt;
 			}
 		}

@@ -18,8 +18,8 @@ int main()
     std::println("=== CORE VALIDATION TEST ===");
     KetenAdmin wouter;
     KetenAdmin kimy;
-    Keten::generateKeyPair(wouter.publicKey, wouter.privateKey);
-    Keten::generateKeyPair(kimy.publicKey, kimy.privateKey);
+    Keten::Crypto::generateKeyPair(wouter.publicKey, wouter.privateKey);
+    Keten::Crypto::generateKeyPair(kimy.publicKey, kimy.privateKey);
 
     wouter.keten.AddAdmin(kimy.publicKey);
     wouter.keten.AddAdmin(wouter.publicKey);
@@ -29,9 +29,9 @@ int main()
     Keten::Block genesisBlock(0, "0000000000000000000000000000000000000000000000000000000000000000");
     genesisBlock.creator = wouter.publicKey;
 
-    std::string genHash = Keten::calculateHash(genesisBlock.getRawData());
+    std::string genHash = Keten::Crypto::calculateHash(genesisBlock.getRawData());
     genesisBlock.hash = genHash;
-    genesisBlock.signature = Keten::signMessage(genHash, wouter.privateKey);
+    genesisBlock.signature = Keten::Crypto::signMessage(genHash, wouter.privateKey);
 
     wouter.keten.AddBlock(genesisBlock);
     kimy.keten.AddBlock(genesisBlock);
@@ -43,16 +43,16 @@ int main()
     transaction.sender = wouter.publicKey;
     transaction.receiver = kimy.publicKey;
     transaction.nonce = 1;
-    transaction.txHash = Keten::calculateHash(transaction.getRawData());
-    transaction.signature = Keten::signMessage(transaction.txHash, wouter.privateKey);
+    transaction.txHash = Keten::Crypto::calculateHash(transaction.getRawData());
+    transaction.signature = Keten::Crypto::signMessage(transaction.txHash, wouter.privateKey);
 
     Keten::Block block1(1, lastBlock.hash);
     block1.transactions.push_back(transaction);
     block1.creator = wouter.publicKey;
 
-    std::string block1Hash = Keten::calculateHash(block1.getRawData());
+    std::string block1Hash = Keten::Crypto::calculateHash(block1.getRawData());
     block1.hash = block1Hash;
-    block1.signature = Keten::signMessage(block1Hash, wouter.privateKey);
+    block1.signature = Keten::Crypto::signMessage(block1Hash, wouter.privateKey);
 
     if (kimy.keten.AddBlock(block1)) {
         std::println("SUCCESS: Block successfully validated and added by Kimy.");

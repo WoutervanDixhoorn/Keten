@@ -14,13 +14,13 @@ namespace Keten {
 
 	class P2PNetwork {
 	public:
-		P2PNetwork(const std::string nodePort, const std::string seedIp = "", const std::string seedPort = "");
+		P2PNetwork(const std::string& nodePort, const std::string& seedIp = "", const std::string& seedPort = "");
 		~P2PNetwork();
 
 		void Start();
 		void Stop();
 
-		void PushMessage(NetworkMessage& message);
+		void PushMessage(const NetworkMessage& message);
 		bool PollMessage(NodeMessage& outMessage);
 
 	private:
@@ -29,7 +29,7 @@ namespace Keten {
 		void processNodeMessages();
 
 		void startListenClient();
-		void onNodeReceive(msock_message& msg);
+		void onNodeReceive(const msock_message& msg);
 
 		void startListenServer();
 		static bool onClientNodeConnect(msock_client* client);

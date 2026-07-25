@@ -11,22 +11,22 @@ namespace Keten {
 	public:
 		Blockchain() = default;
 
-		long CalculateBalance(const std::string& publicKey);
-
 		bool AddBlock(Block newBlock);
-		const Block& GetLatestBlock() const;
-
-		inline const size_t Size() const { return m_chain.size(); }
-
 		void AddAdmin(const std::string& adminPublicKey);
+
+	public:
+		const long CalculateBalance(const std::string& publicKey) const;
+		const Block& GetLatestBlock() const;
+		const size_t Size() const;
+	
+	private:
+		bool isValidHash(const Block& b);
 
 	private:
 		std::mutex m_chainMutex;
 
 		std::vector<Block> m_chain;
 		std::vector<std::string> m_adminKeys;
-
-		bool isValidHash(const Block& b);
 	};
 
 }

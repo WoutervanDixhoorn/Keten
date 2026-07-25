@@ -18,21 +18,19 @@ namespace Keten {
 
 	class Node {
 	public:
-		Node(const std::string nodePort, const std::string seedIp = "", const std::string seedPort = "");
+		Node(const std::string& nodePort, const std::string& seedIp = "", const std::string& seedPort = "");
 		~Node() = default;
 
 		void Start(bool interactive = true);
-		
+		bool SendTransaction(long amount, std::string& receiver);
+	public:
 		void CreateGenesisBlock();
-		uint32_t GetChainHeight();
-		long CalculateBalance(const std::string publicKey);
+		void AddAdmin(const std::string& publicKey);
 
-		//TODO: Move this somewhere else I guess? And we still need the mechanism to asign admin users that need to verify. probably generate key pairs for the admin, this is ok for now!
-		void AddAdmin(const std::string publicKey) { m_keten.AddAdmin(publicKey); }
-		inline const std::string& GetPublicKey() const { return m_id.publicKey; }
+		const std::string& GetPublicKey() const;
+		long CalculateBalance(const std::string& publicKey) const;
+		uint32_t GetChainHeight() const;
 
-		bool SendTransaction(long amount, std::string receiver);
-		
 	private:
 		void handleUserInput();
 		void processNetworkMessage();
@@ -40,14 +38,13 @@ namespace Keten {
 
 	private:
 		NodeIdentity m_id;
+		P2PNetwork m_network;
+		Blockchain m_keten;
+
 		TransactionManager m_transactionManager;
 		BlockManager m_blockManager;
 
-		P2PNetwork m_network;
-		Blockchain m_keten;
-		
 		std::map<NodeMessageType, std::unique_ptr<IMessageProcessor>> m_messageTypeProcessorMap;
-
 		std::jthread m_messageProcessingThread;
 		std::jthread m_nodeProcessingThread;
 	};

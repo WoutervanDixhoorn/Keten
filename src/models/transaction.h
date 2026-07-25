@@ -15,11 +15,11 @@ namespace Keten {
 		std::string txHash;
 		uint64_t nonce;
 
-		std::string getRawData() const {
+		const std::string getRawData() const {
 			return sender + receiver + std::to_string(amount) + std::to_string(nonce);
 		}
 
-		bool operator==(const std::string& hash) { return txHash == hash; }
+		bool operator==(const std::string& hash) const { return txHash == hash; }
 
 	};
 
