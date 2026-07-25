@@ -82,26 +82,32 @@ namespace Keten {
 	void Node::handleUserInput() 
 	{
 		std::string input;
-		while (true) {
+		while (true) 
+		{
 			std::getline(std::cin, input);
 
-			if (input == "exit") {
+			if (input == "exit") 
+			{
 				m_network.Stop();
 				break;
 			}
-			else if (input == "info") {
+			else if (input == "info") 
+			{
 				std::println("My Public Key: {}", m_id.publicKey);
-			} else if (input.starts_with("send")) {
+			} else if (input.starts_with("send")) 
+			{
 				std::istringstream ss(input);
 
 				std::string command;
 				std::string receiverKey;
 				long amount;
 
-				if (ss >> command >> receiverKey >> amount) {
+				if (ss >> command >> receiverKey >> amount) 
+				{
 					SendTransaction(amount, receiverKey);
 				}
-				else {
+				else 
+				{
 					std::println("Invalid format! Use: send <key> <amount>");
 					continue;
 				}
