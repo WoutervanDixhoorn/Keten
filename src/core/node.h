@@ -22,7 +22,7 @@ namespace Keten {
 		~Node() = default;
 
 		void Start(bool interactive = true);
-		bool SendTransaction(long amount, std::string& receiver);
+		bool SendTransaction(long amount, const std::string& receiverKey);
 	public:
 		void CreateGenesisBlock();
 		void AddAdmin(const std::string& publicKey);

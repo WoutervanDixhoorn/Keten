@@ -40,24 +40,18 @@ namespace Keten {
 
 			Transaction incomingTransaction = nlohmann::json::parse(incomingMsg.payload).get<Transaction>();
 
-			std::println("Message from {}\nAmount: {}", incomingTransaction.sender.substr(0, 6), incomingTransaction.amount);
+			//std::println("Message from {}\nAmount: {}", incomingTransaction.sender.substr(0, 6), incomingTransaction.amount);
 
 			long senderBalance = m_keten.CalculateBalance(incomingTransaction.sender);
-			if (senderBalance < incomingTransaction.amount)
+			if (!m_transactionManager.ValidateTransaction(incomingTransaction, senderBalance)) 
 			{
-				std::println("Transaction REJECTED: Sender only has {} coins, tried to send {}!", senderBalance, incomingTransaction.amount);
-				return false;
-			}
-
-			if (!m_transactionManager.ValidateTransaction(incomingTransaction)) 
-			{
-				std::println("Transaction is not valid!");
+				//std::println("Transaction is not valid!");
 				return false;
 			}
 
 			m_transactionManager.AddTransaction(incomingTransaction);
 
-			std::println("Transaction is valid!");
+			//std::println("Transaction is valid!");
 
 			NetworkMessage netMessage = MessageFactory::CreateNetworkMessage(NodeMessageType::TRANSACTION, incomingTransaction, NetworkMessageType::BROADCAST);
 			m_network.PushMessage(netMessage);

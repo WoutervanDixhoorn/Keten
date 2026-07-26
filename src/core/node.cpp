@@ -38,11 +38,16 @@ namespace Keten {
 		if(interactive) handleUserInput();
 	}
 
-	bool Node::SendTransaction(long amount, std::string& receiver)
+	bool Node::SendTransaction(long amount, const std::string& receiverKey)
 	{
-		std::println("Drawfting transaction of {} coins to {}...", amount, receiver.substr(0, 6));
+		//std::println("Drawfting transaction of {} coins to {}...", amount, receiverKey.substr(0, 6));
 
-		Transaction tx = m_transactionManager.CreateTransaction(amount, receiver);
+		Transaction tx = m_transactionManager.CreateTransaction(amount, receiverKey);
+		if (!m_transactionManager.ValidateTransaction(tx, m_keten.CalculateBalance(tx.sender))) {
+			return false;
+		}
+		m_transactionManager.AddTransaction(tx);
+
 		NetworkMessage txMsg = MessageFactory::CreateNetworkMessage(NodeMessageType::TRANSACTION, tx, NetworkMessageType::BROADCAST);
 		m_network.PushMessage(txMsg);
 
@@ -146,7 +151,7 @@ namespace Keten {
 				continue;
 			}
 
-			std::vector<Transaction> flushedTransactions = m_transactionManager.FlushPendingTransactions();
+			std::vector<Transaction> flushedTransactions = m_transactionManager.FlushPendingTransactions(10);
 			Block newBlock = m_blockManager.MintBlock(m_keten.Size(), m_keten.GetLatestBlock().hash, flushedTransactions);
 			m_keten.AddBlock(newBlock);
 

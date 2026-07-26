@@ -10,7 +10,7 @@ namespace Keten {
 	{
 		if (m_chain.size() > 0 && newBlock.prevHash != m_chain.back().hash) 
 		{
-			std::println("REJECTED: Chain link broken.");
+			//std::println("REJECTED: Chain link broken.");
 			return false;
 		}
 
@@ -47,8 +47,10 @@ namespace Keten {
 		}
 	}
 
-	const long Blockchain::CalculateBalance(const std::string& publicKey) const
+	long Blockchain::CalculateBalance(const std::string& publicKey) const
 	{
+		std::lock_guard<std::mutex> guard(m_chainMutex);
+
 		long balance = 0;
 
 		for (const auto& block : m_chain) 

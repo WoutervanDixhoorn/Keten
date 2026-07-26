@@ -9,10 +9,10 @@ namespace Keten {
 
 	class BlockManager {
 	private:
-		NodeIdentity& m_id;
+		const NodeIdentity& m_id;
 
 	public:
-		BlockManager(NodeIdentity& id) : m_id(id) {};
+		BlockManager(const NodeIdentity& id) : m_id(id) {};
 
 		const Block CreateGenesisBlock() const;
 		const Block MintBlock(const uint32_t nextBlockIndex, const std::string& prevBlockHash, std::vector<Transaction>& transaction) const;

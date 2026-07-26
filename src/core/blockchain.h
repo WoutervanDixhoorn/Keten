@@ -15,7 +15,7 @@ namespace Keten {
 		void AddAdmin(const std::string& adminPublicKey);
 
 	public:
-		const long CalculateBalance(const std::string& publicKey) const;
+		long CalculateBalance(const std::string& publicKey) const;
 		const Block& GetLatestBlock() const;
 		const size_t Size() const;
 	
@@ -23,7 +23,7 @@ namespace Keten {
 		bool isValidHash(const Block& b);
 
 	private:
-		std::mutex m_chainMutex;
+		mutable std::mutex m_chainMutex;
 
 		std::vector<Block> m_chain;
 		std::vector<std::string> m_adminKeys;

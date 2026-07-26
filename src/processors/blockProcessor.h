@@ -35,7 +35,7 @@ namespace Keten {
 			Block incomingBlock = nlohmann::json::parse(incomingMsg.payload).get<Block>();
 
 			//TODO: Write some sort of simple logger so we can log to file, have different log levels and disable it completely
-			std::println("Message with Block from {} ID: {}", incomingBlock.creator.substr(0, 6), incomingBlock.hash.substr(0, 6));
+			//std::println("Message with Block from {} ID: {}", incomingBlock.creator.substr(0, 6), incomingBlock.hash.substr(0, 6));
 
 			if (!m_keten.AddBlock(incomingBlock))
 			{

@@ -29,7 +29,7 @@ namespace Keten {
 		void processNodeMessages();
 
 		void startListenClient();
-		void onNodeReceive(const msock_message& msg);
+		void onNodeReceive(const std::string& msgPayload);
 
 		void startListenServer();
 		static bool onClientNodeConnect(msock_client* client);

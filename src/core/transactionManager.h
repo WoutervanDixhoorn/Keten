@@ -1,6 +1,7 @@
 #pragma once
 #include "models/identity.h"
 #include "models/transaction.h"
+#include "core/blockchain.h"
 
 #include "../network/messageTypes.h"
 
@@ -12,20 +13,22 @@ namespace Keten {
 
 	class TransactionManager {
 	private:
-		NodeIdentity& m_id;
-		
-		uint64_t m_transactionNonce = 0;
-		std::vector<Transaction> m_pendingTransactions;
+		const NodeIdentity& m_id;
 
-		std::mutex m_pendingTransactionsMutex;
+		uint64_t m_transactionNonce = 0;
+		std::vector<Transaction> m_mempool;
+
+		mutable std::mutex m_mempoolMutex;
 	public:
-		TransactionManager(NodeIdentity& id) : m_id(id) {};
+		TransactionManager(const NodeIdentity& id) : m_id(id) {}
 
 		Transaction CreateTransaction(const long amount, const std::string& receiver);
-		bool ValidateTransaction(Transaction tx) const;
+		bool ValidateTransaction(Transaction tx, long mintedBalance) const;
 		void AddTransaction(const Transaction tx);
 
-		const std::vector<Transaction> FlushPendingTransactions();
+		long CalculatePendingBalance(const std::string& publicKey) const;
+
+		const std::vector<Transaction> FlushPendingTransactions(const size_t limit);
 		const size_t GetPendingTransactionCount();
 	};
 

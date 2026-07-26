@@ -98,6 +98,9 @@ namespace Keten {
 			{
 			case NetworkMessageType::BROADCAST:
 				msock_server_broadcast(&m_server, &outMsg, m_client.socket_state == MSOCK_STATE_CONNECTED ? &m_client : nullptr);
+				if (msock_client_is_connected(&m_client)) {
+					msock_client_send(&m_client, &outMsg);
+				}
 				break;
 			case NetworkMessageType::DIRECT:
 				if (msock_client_is_connected(&m_client)) {
@@ -123,6 +126,8 @@ namespace Keten {
 			.size = sizeof(receive_buffer)
 		};
 
+		std::string m_serverBuffer;
+
 		while (msock_client_is_connected(&m_client)) 
 		{
 
@@ -142,30 +147,34 @@ namespace Keten {
 				}
 			}
 
-			onNodeReceive(msg);
+			m_serverBuffer.append(msg.buffer, msg.len);
+
+			ssize_t pos;
+			while((pos = m_serverBuffer.find('\n')) != std::string::npos) 
+			{
+				std::string frame = m_serverBuffer.substr(0, pos);
+				m_serverBuffer.erase(0, pos + 1);
+
+				if (!frame.empty())
+				{
+					onNodeReceive(frame);
+				}
+			}
 		}
 
 		msock_client_close(&m_client);
 	}
 
-	void P2PNetwork::onNodeReceive(const msock_message& msg)
+	void P2PNetwork::onNodeReceive(const std::string& msgFrame)
 	{
-		std::stringstream payload(msg.buffer);
-		std::string frame;
-
-		while (std::getline(payload, frame, '\n')) 
+		std::optional<NodeMessage> parsedMsg = MessageFactory::ParseNetworkFrame(msgFrame);
+		if(parsedMsg.has_value())
 		{
-			if (frame.empty()) continue;
-
-			std::optional<NodeMessage> parsedMsg = MessageFactory::ParseNetworkFrame(frame);
-			if(parsedMsg.has_value())
-			{
-				m_outboundQueue.Push(parsedMsg.value());
-			}
-			else
-			{
-				std::println("[CLIENT] Invalid JSON envelope received.");
-			}
+			m_outboundQueue.Push(parsedMsg.value());
+		}
+		else
+		{
+			std::println("[CLIENT] Invalid JSON envelope received.");
 		}
 	}
 
@@ -230,7 +239,7 @@ namespace Keten {
 		}
 
 		P2PNetwork* net = static_cast<P2PNetwork*>(server->userdata);
-		net->m_clientBuffers[client].append(txMsg.buffer);
+		net->m_clientBuffers[client].append(txMsg.buffer, txMsg.len);
 
 		if (net->m_clientBuffers[client].size() > net->MAX_MESSAGE_SIZE) 
 		{
