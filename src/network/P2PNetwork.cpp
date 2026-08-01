@@ -103,6 +103,19 @@ namespace Keten {
 				}
 				break;
 			case NetworkMessageType::DIRECT:
+				try {
+					auto j = nlohmann::json::parse(message.payload);
+					std::string targetId = j["data"]["targetNodeId"].get<std::string>();
+
+					std::lock_guard<std::mutex> lock(m_mapMutex);
+					if (m_nodeToClientMap.contains(targetId)) {
+						msock_client* targetClient = m_nodeToClientMap[targetId];
+						msock_client_send(targetClient, &outMsg);
+						break;
+					}
+				}
+				catch (...) { /*Ignore*/ }
+
 				if (msock_client_is_connected(&m_client)) {
 					msock_client_send(&m_client, &outMsg);
 				}
@@ -210,6 +223,11 @@ namespace Keten {
 		auto* net = static_cast<P2PNetwork*>(client->userdata);
 		net->m_clientBuffers.erase(client);
 
+		std::lock_guard<std::mutex> lock(net->m_mapMutex);
+		std::erase_if(net->m_nodeToClientMap, [client](const auto& item) {
+			return item.second == client;
+		});
+
 		return true;
 	}
 
@@ -260,6 +278,16 @@ namespace Keten {
 				std::optional<NodeMessage> parsedMsg = MessageFactory::ParseNetworkFrame(frame);
 				if (parsedMsg.has_value()) 
 				{
+					try {
+						auto j = nlohmann::json::parse(parsedMsg.value().payload);
+						if (j.contains("nodeId")) {
+							std::string nodeId = j["nodeId"];
+							std::lock_guard<std::mutex> lock(net->m_mapMutex);
+							net->m_nodeToClientMap[nodeId] = client;
+						}
+					}
+					catch (...) { /*Ignore*/ }
+
 					net->m_outboundQueue.Push(parsedMsg.value());
 				}
 				else

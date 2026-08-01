@@ -6,7 +6,7 @@
 
 namespace Keten {
 
-	Transaction TransactionManager::CreateTransaction(const long amount, const std::string& receiver)
+	Transaction TransactionManager::CreateTransaction(const long amount, const std::string& receiver) const
 	{
 		Keten::Transaction transaction;
 		transaction.amount = amount;
@@ -26,6 +26,7 @@ namespace Keten {
 	{
 		std::string transactionHash = Crypto::calculateHash(tx.getRawData());
 
+		// TODO: ThreadSafe Queue/Mempool
 		{
 			std::lock_guard<std::mutex> guard(m_mempoolMutex);
 
@@ -34,9 +35,8 @@ namespace Keten {
 				return false;
 			}
 		}
-		long mempoolBalance = CalculatePendingBalance(tx.sender);
-		long totalBalance = senderBalance + mempoolBalance;
 
+		long totalBalance = senderBalance + GetPendingBalance(tx.sender);
 		if (totalBalance < tx.amount) return false;
 
 		tx.txHash = transactionHash;
@@ -58,7 +58,29 @@ namespace Keten {
 		m_mempool.push_back(tx);
 	}
 
-	long TransactionManager::CalculatePendingBalance(const std::string& publicKey) const
+	void TransactionManager::ApplyBlock(const Block& block)
+	{
+		std::lock_guard<std::mutex> guard(m_mempoolMutex);
+
+		for (const auto& blockTx : block.transactions) {
+			auto it = std::remove_if(m_mempool.begin(), m_mempool.end(), [&blockTx](const Transaction& mempoolTx) {
+				return mempoolTx.txHash == blockTx.txHash;
+				});
+			if (it != m_mempool.end()) {
+				m_mempool.erase(it, m_mempool.end());
+			}
+		}
+		m_mempool.shrink_to_fit();
+	}
+
+	bool TransactionManager::IsEmpty() const
+	{
+		std::lock_guard<std::mutex> guard(m_mempoolMutex);
+
+		return m_mempool.size() == 0;
+	}
+
+	long TransactionManager::GetPendingBalance(const std::string& publicKey) const
 	{
 		std::lock_guard<std::mutex> guard(m_mempoolMutex);
 
@@ -77,9 +99,15 @@ namespace Keten {
 	{
 		std::lock_guard<std::mutex> guard(m_mempoolMutex);
 
+		std::sort(m_mempool.begin(), m_mempool.end(), [](const Transaction& a, const Transaction& b) {
+			if (a.nonce != b.nonce) return a.nonce < b.nonce;
+			return a.txHash < b.txHash;
+		});
+
 		auto startIter = m_mempool.begin();
-		auto endIter = m_mempool.begin() + limit;
-		if (m_mempool.size() < limit) endIter = m_mempool.end();
+
+		size_t safeLimit = (std::min)(limit, m_mempool.size());
+		auto endIter = m_mempool.begin() + safeLimit;
 
 		std::vector<Transaction> transactions(startIter, endIter);
 

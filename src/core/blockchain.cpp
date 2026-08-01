@@ -8,9 +8,17 @@ namespace Keten {
 
 	bool Blockchain::AddBlock(Block newBlock) 
 	{
+		std::lock_guard<std::mutex> guard(m_chainMutex);
+
+		for (const auto& b : m_chain) {
+			if (b.hash == newBlock.hash) {
+				return false;
+			}
+		}
+
 		if (m_chain.size() > 0 && newBlock.prevHash != m_chain.back().hash) 
 		{
-			//std::println("REJECTED: Chain link broken.");
+			std::println("REJECTED: Chain link broken.");
 			return false;
 		}
 
@@ -33,8 +41,6 @@ namespace Keten {
 			return false;
 		}
 
-		std::lock_guard<std::mutex> guard(m_chainMutex);
-
 		m_chain.push_back(newBlock);
 		return true;
 	}
@@ -47,28 +53,15 @@ namespace Keten {
 		}
 	}
 
-	long Blockchain::CalculateBalance(const std::string& publicKey) const
+	const std::vector<Block>& Blockchain::GetChain() const
 	{
-		std::lock_guard<std::mutex> guard(m_chainMutex);
-
-		long balance = 0;
-
-		for (const auto& block : m_chain) 
-		{
-			const auto& transactions = block.transactions;
-
-			for (const auto& tx : transactions) 
-			{
-				if (tx.receiver == publicKey) balance += tx.amount;
-				if (tx.sender == publicKey) balance -= tx.amount;
-			}
-		}
-
-		return balance;
+		return m_chain;
 	}
 
 	const Block& Blockchain::GetLatestBlock() const
 	{
+		std::lock_guard<std::mutex> guard(m_chainMutex);
+
 		if (m_chain.empty()) 
 		{
 			throw std::runtime_error("FATAL: Cannot get latest block, blockchain is entirely empty!");
@@ -78,6 +71,7 @@ namespace Keten {
 
 	const size_t Blockchain::Size() const
 	{
+		std::lock_guard<std::mutex> guard(m_chainMutex);
 		return m_chain.size();
 	}
 

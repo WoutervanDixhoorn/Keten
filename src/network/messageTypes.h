@@ -13,12 +13,14 @@ namespace Keten {
 	struct NetworkMessage {
 		std::string payload;
 		NetworkMessageType messageType;
-		std::string directAddress;
 	};
 
 	enum NodeMessageType {
 		TRANSACTION,
-		BLOCK
+		BLOCK,
+
+		SYNC_REQUEST,
+		SYNC_RESPONSE,
 	};
 
 	struct NodeMessage {

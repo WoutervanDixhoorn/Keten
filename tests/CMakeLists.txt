@@ -1,3 +1,4 @@
 add_subdirectory(economy_test)
 add_subdirectory(validator_test)
 add_subdirectory(throughput_test)
+add_subdirectory(sync_test)

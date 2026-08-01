@@ -50,4 +50,14 @@ namespace Keten {
 		return newBlock;
 	}
 
+	bool BlockManager::ProcessSync(const std::vector<Block>& blocks)
+	{
+		for (auto& block : blocks)
+		{
+			if (!m_keten.AddBlock(block)) return false;
+		}
+
+		return true;
+	}
+
 }

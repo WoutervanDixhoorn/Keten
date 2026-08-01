@@ -28,9 +28,9 @@ int main() {
 
     std::println("\n=== NETWORK LEDGER VERIFICATION ===");
 
-    long seedBalanceOnSeed = seedNode.CalculateBalance(seedNode.GetPublicKey());
-    long seedBalanceOnNodeOne = nodeOne.CalculateBalance(seedNode.GetPublicKey());
-    long seedBalanceOnNodeTwo = nodeTwo.CalculateBalance(seedNode.GetPublicKey());
+    long seedBalanceOnSeed = seedNode.GetBalance(seedNode.GetPublicKey());
+    long seedBalanceOnNodeOne = nodeOne.GetBalance(seedNode.GetPublicKey());
+    long seedBalanceOnNodeTwo = nodeTwo.GetBalance(seedNode.GetPublicKey());
 
     std::println("Seed Node's local view of its balance: {} coins", seedBalanceOnSeed);
     std::println("Node One's view of Seed's balance:     {} coins", seedBalanceOnNodeOne);

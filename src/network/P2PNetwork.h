@@ -8,6 +8,7 @@ extern "C" {
 }
 
 #include <thread>
+#include <mutex>
 #include <unordered_map>
 
 namespace Keten {
@@ -53,6 +54,9 @@ namespace Keten {
 
 		const size_t MAX_MESSAGE_SIZE = 8192;
 		std::unordered_map<msock_client*, std::string> m_clientBuffers;
+
+		std::mutex m_mapMutex;
+		std::unordered_map<std::string, msock_client*> m_nodeToClientMap;
 	};
 
 }

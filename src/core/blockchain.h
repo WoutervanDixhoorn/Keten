@@ -15,10 +15,10 @@ namespace Keten {
 		void AddAdmin(const std::string& adminPublicKey);
 
 	public:
-		long CalculateBalance(const std::string& publicKey) const;
+		const std::vector<Block>& GetChain() const;
 		const Block& GetLatestBlock() const;
 		const size_t Size() const;
-	
+		
 	private:
 		bool isValidHash(const Block& b);
 

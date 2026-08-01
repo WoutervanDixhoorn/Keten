@@ -3,9 +3,6 @@
 
 #include "network/messageFactory.h"
 
-#include "processors/blockProcessor.h"
-#include "processors/transactionProcessor.h"
-
 #include "utility/crypto.h"
 
 #include <print>
@@ -13,17 +10,16 @@
 #include <iostream>
 #include <cstdint>
 #include <chrono>
-
+#include <variant>
 
 namespace Keten {
 
 	Node::Node(const std::string& nodePort, const std::string& seedIp, const std::string& seedPort)
-		: m_id(), m_transactionManager(m_id), m_blockManager(m_id), m_network(nodePort, seedIp, seedPort), m_keten()
+		: m_id(), m_transactionManager(m_id), m_blockManager(m_id, m_keten), m_network(nodePort, seedIp, seedPort), m_keten(), m_currentState(SyncingState())
 	{
 		Crypto::generateKeyPair(m_id.publicKey, m_id.privateKey);
 
-		m_messageTypeProcessorMap[NodeMessageType::TRANSACTION] = std::make_unique<TransactionProcessor>(m_transactionManager, m_keten, m_network);
-		m_messageTypeProcessorMap[NodeMessageType::BLOCK] = std::make_unique<BlockProcessor>(m_keten, m_network);
+		if (seedIp.empty() || seedPort.empty()) m_currentState = ActiveState();
 	}
 
 	void Node::Start(bool interactive) 
@@ -35,15 +31,17 @@ namespace Keten {
 		m_messageProcessingThread = std::jthread(&Node::processNetworkMessage, this);
 		m_nodeProcessingThread = std::jthread(&Node::nodeProcessing, this);
 
+		m_mainStateThread = std::jthread(&Node::runEventLoop, this);
+
+		m_eventQueue.Push(NodeBeginSyncEvent());
+
 		if(interactive) handleUserInput();
 	}
 
 	bool Node::SendTransaction(long amount, const std::string& receiverKey)
 	{
-		//std::println("Drawfting transaction of {} coins to {}...", amount, receiverKey.substr(0, 6));
-
 		Transaction tx = m_transactionManager.CreateTransaction(amount, receiverKey);
-		if (!m_transactionManager.ValidateTransaction(tx, m_keten.CalculateBalance(tx.sender))) {
+		if (!m_transactionManager.ValidateTransaction(tx, m_ledger.GetBalance(tx.sender))) {
 			return false;
 		}
 		m_transactionManager.AddTransaction(tx);
@@ -61,7 +59,13 @@ namespace Keten {
 
 		m_keten.AddAdmin(m_id.publicKey);
 		m_keten.AddBlock(genBlock);
+		m_ledger.ApplyBlock(genBlock);
 		m_network.PushMessage(genBlockMessage);
+	}
+
+	void Node::SetState(NodeState state)
+	{
+		m_currentState = state;
 	}
 
 	uint32_t Node::GetChainHeight() const
@@ -69,14 +73,55 @@ namespace Keten {
 		return m_keten.Size();
 	}
 
-	long Node::CalculateBalance(const std::string& publicKey) const
+	bool Node::IsSynced() const
 	{
-		return m_keten.CalculateBalance(publicKey);
+		return std::holds_alternative<ActiveState>(m_currentState);
+	}
+
+	bool Node::IsDoneMinting() const
+	{
+		return m_transactionManager.IsEmpty();
+	}
+
+	long Node::GetBalance(const std::string& publicKey) const
+	{
+		return m_ledger.GetBalance(publicKey);
 	}
 
 	void Node::AddAdmin(const std::string& publicKey)
 	{
 		m_keten.AddAdmin(publicKey);
+		m_consensus.AddAdmin(publicKey);
+	}
+
+	void Node::PushNetworkMessage(const NetworkMessage& message)
+	{
+		m_network.PushMessage(message);
+	}
+
+	void Node::PushEvent(const NodeEvent& event)
+	{
+		m_eventQueue.Push(event);
+	}
+
+	BlockManager& Node::GetBlockManager()
+	{
+		return m_blockManager;
+	}
+
+	TransactionManager& Node::GetTransactionManager()
+	{
+		return m_transactionManager;
+	}
+
+	Blockchain& Node::GetKeten()
+	{
+		return m_keten;
+	}
+
+	Ledger& Node::GetLedger()
+	{
+		return m_ledger;
 	}
 
 	const std::string& Node::GetPublicKey() const
@@ -84,7 +129,28 @@ namespace Keten {
 		return m_id.publicKey;
 	}
 
-	void Node::handleUserInput() 
+	void Node::runEventLoop()
+	{
+
+		while (true)
+		{
+			NodeEvent event;
+			if (!m_eventQueue.TryPop(event))
+			{
+				//TODO: Replace this with condition vairable
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				continue;
+			}
+
+			std::visit([this](auto& activeState, const auto& activeEvent) {
+				activeState(activeEvent, *this);
+			}, m_currentState, event);
+
+		}
+
+	}
+
+	void Node::handleUserInput()
 	{
 		std::string input;
 		while (true) 
@@ -132,9 +198,33 @@ namespace Keten {
 				continue;
 			}
 
-			if (m_messageTypeProcessorMap.contains(message.messageType)) 
+			switch (message.messageType)
 			{
-				m_messageTypeProcessorMap[message.messageType]->ProcessMessage(message);
+
+			case NodeMessageType::SYNC_REQUEST: {
+				nlohmann::json payload = nlohmann::json::parse(message.payload);
+				uint32_t height = payload["currentHeight"].get<uint32_t>();
+				std::string requesterId = payload["nodeId"].get<std::string>();
+				m_eventQueue.Push(NodeSyncRequestEvent{ .currentHeight = height, .requesterId = requesterId });
+				break;
+			}
+
+			case NodeMessageType::SYNC_RESPONSE: {
+				nlohmann::json payload = nlohmann::json::parse(message.payload);
+				uint32_t targetHeight = payload["targetChainHeight"].get<uint32_t>();
+				std::vector<Block> syncBlocks = payload["syncBlocks"].get<std::vector<Block>>();
+				m_eventQueue.Push(NodeSyncResponseEvent{ .targetChainHeight = targetHeight, .syncBlocks = syncBlocks });
+				break;
+			}
+
+			case NodeMessageType::TRANSACTION:
+				m_eventQueue.Push(NodeTransactionEvent{ .tx = nlohmann::json::parse(message.payload).get<Transaction>() });
+				break;
+
+			case NodeMessageType::BLOCK:
+				m_eventQueue.Push(NodeNewBlockEvent{ .newBlock = nlohmann::json::parse(message.payload).get<Block>() });
+				break;
+
 			}
 
 		}
@@ -142,10 +232,27 @@ namespace Keten {
 
 	void Node::nodeProcessing()
 	{
+		auto timeSinceLastMintCheck = std::chrono::steady_clock::now();
+
 		while (true)
 		{
-			//NOTE: If a treshold is reached a block will get minted and spread over the network!
-			if (m_transactionManager.GetPendingTransactionCount() < 10)
+			size_t pendingCount = m_transactionManager.GetPendingTransactionCount();
+
+			auto now = std::chrono::steady_clock::now();
+			int elapsedSeconds = std::chrono::duration_cast<std::chrono::seconds>(now - timeSinceLastMintCheck).count();
+			
+			bool sizeThresholdReached = pendingCount >= 10;
+			bool timeThresholdReached = (pendingCount > 0 && elapsedSeconds >= 2);
+
+			if (!sizeThresholdReached && !timeThresholdReached)
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				continue;
+			}
+
+			auto nextToMint = m_consensus.GetNextToMintBlock(m_keten.Size());
+
+			if (!nextToMint.has_value() || nextToMint.value().get() != m_id.publicKey)
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 				continue;
@@ -154,6 +261,8 @@ namespace Keten {
 			std::vector<Transaction> flushedTransactions = m_transactionManager.FlushPendingTransactions(10);
 			Block newBlock = m_blockManager.MintBlock(m_keten.Size(), m_keten.GetLatestBlock().hash, flushedTransactions);
 			m_keten.AddBlock(newBlock);
+			m_ledger.ApplyBlock(newBlock);
+			m_transactionManager.ApplyBlock(newBlock);
 
 			NetworkMessage blockMsg = MessageFactory::CreateNetworkMessage(NodeMessageType::BLOCK, newBlock, NetworkMessageType::BROADCAST);
 			m_network.PushMessage(blockMsg);

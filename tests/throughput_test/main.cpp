@@ -2,64 +2,155 @@
 #include <thread>
 #include <print>
 #include <chrono>
+#include <string>
+#include <vector>
+#include <memory>
 
-#define TRANSACTION_COUNT 1000
+#define TRANSACTION_COUNT 2000
 
-int main() {
-    std::println("=== THROUGHPUT & MINTING STRESS TEST ===");
-    Keten::Node seedNode("4455");
-    seedNode.Start(false);
+// ==========================================
+// === HELPER FUNCTIES ===
+// ==========================================
 
-    Keten::Node nodeOne("4456", "127.0.0.1", "4455");
-    nodeOne.Start(false);
+void SpamTransactions(Keten::Node& sender, const std::string& receiverKey, int count, int amount)
+{
+    std::println("Node {} is spamming {} transactions...", sender.GetPublicKey().substr(0, 6), count);
+    for (int i = 0; i < count; i++) {
+        sender.SendTransaction(amount, receiverKey);
+    }
+}
 
-    Keten::Node nodeTwo("4457", "127.0.0.1", "4455");
-    nodeTwo.Start(false);
+void SyncAdmins(const std::vector<Keten::Node*>& nodes, const std::vector<std::string>& adminKeys)
+{
+    for (auto* node : nodes) {
+        for (const auto& key : adminKeys) {
+            node->AddAdmin(key);
+        }
+    }
+}
 
-    seedNode.AddAdmin(nodeOne.GetPublicKey());
-    seedNode.AddAdmin(nodeTwo.GetPublicKey());
+bool VerifyNetworkConsensus(const std::vector<Keten::Node*>& nodes, const std::vector<std::string>& trackedKeys)
+{
+    std::println("\n=== VALIDATING CONSENSUS ACROSS {} NODES ===", nodes.size());
 
-    nodeOne.AddAdmin(seedNode.GetPublicKey()); 
-    nodeOne.AddAdmin(nodeOne.GetPublicKey());
-    nodeOne.AddAdmin(nodeTwo.GetPublicKey());
+    uint32_t baselineHeight = nodes[0]->GetChainHeight();
+    bool heightSync = true;
 
-    nodeTwo.AddAdmin(seedNode.GetPublicKey());
-    nodeTwo.AddAdmin(nodeTwo.GetPublicKey());
-    nodeTwo.AddAdmin(nodeOne.GetPublicKey());
+    std::print("Chain Heights: ");
+    for (size_t i = 0; i < nodes.size(); i++) {
+        uint32_t h = nodes[i]->GetChainHeight();
+        std::print("Node{}:{} ", i, h);
+        if (h != baselineHeight) heightSync = false;
+    }
+    std::println("");
 
-    std::println("Waiting for network handshake (3 seconds)...");
-    std::this_thread::sleep_for(std::chrono::seconds(3));
-
-    seedNode.CreateGenesisBlock();
-
-    std::println("Waiting for genesis block to propagate...");
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-
-    std::println("SeedNode Balance: {}", seedNode.CalculateBalance(seedNode.GetPublicKey()));
-    std::println("NodeOne Balance: {}", seedNode.CalculateBalance(nodeOne.GetPublicKey()));
-    std::println("NodeTWo Balance: {}", seedNode.CalculateBalance(nodeTwo.GetPublicKey()));
-
-    std::println("Nodes started. Firing {} transactions...", (TRANSACTION_COUNT * 3));
-
-    for (int i = 0; i < TRANSACTION_COUNT; i++) {
-        seedNode.SendTransaction(10, nodeTwo.GetPublicKey());
-        nodeTwo.SendTransaction(5312, nodeOne.GetPublicKey());
+    if (!heightSync) {
+        std::println("ERROR: Chain heights are out of sync!");
+        return false;
     }
 
-    for (int i = 0; i < TRANSACTION_COUNT; i++) {
-        nodeOne.SendTransaction(1421, seedNode.GetPublicKey());
+    bool balanceSync = true;
+    for (const auto& key : trackedKeys) {
+        long baselineBalance = nodes[0]->GetBalance(key);
+        std::print("Balance for {}: ", key.substr(0, 6));
+
+        for (size_t i = 0; i < nodes.size(); i++) {
+            long bal = nodes[i]->GetBalance(key);
+            std::print("Node{}:{} ", i, bal);
+            if (bal != baselineBalance) balanceSync = false;
+        }
+        std::println("");
     }
 
-    std::println("All transactions sent. Waiting for network to process and mint blocks...");
+    if (!balanceSync) {
+        std::println("ERROR: Ledgers are out of sync!");
+        return false;
+    }
 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::println("SUCCESS: Perfect consensus reached across all active nodes.");
+    return true;
+}
 
-    std::println("SeedNode Balance: {}", seedNode.CalculateBalance(seedNode.GetPublicKey()));
-    std::println("NodeOne Balance: {}", seedNode.CalculateBalance(nodeOne.GetPublicKey()));
-    std::println("NodeTWo Balance: {}", seedNode.CalculateBalance(nodeTwo.GetPublicKey()));
+// ==========================================
+// === MAIN STRESS TEST ===
+// ==========================================
 
-    std::println("Seed Node Chain Height: {}", seedNode.GetChainHeight()); 
-    std::println("SUCCESS: Stress test completed.");
+int main()
+{
+    std::println("=== ADVANCED THROUGHPUT & P2P STRESS TEST ===\n");
 
+    std::println("[FASE 1] Starting Core Network (Admins)...");
+    auto seedNode = std::make_unique<Keten::Node>("4455");
+    auto adminOne = std::make_unique<Keten::Node>("4456", "127.0.0.1", "4455");
+    auto adminTwo = std::make_unique<Keten::Node>("4457", "127.0.0.1", "4455");
+
+    seedNode->Start(false);
+
+    std::vector<std::string> adminKeys = {
+        seedNode->GetPublicKey(), adminOne->GetPublicKey(), adminTwo->GetPublicKey()
+    };
+
+    SyncAdmins({ seedNode.get(), adminOne.get(), adminTwo.get() }, adminKeys);
+
+    std::println("\n[FASE 2] Introducing Non-Admin Node...");
+    auto nonAdminNode = std::make_unique<Keten::Node>("4458", "127.0.0.1", "4455");
+    nonAdminNode->Start(false);
+    SyncAdmins({ nonAdminNode.get() }, adminKeys);
+
+    seedNode->CreateGenesisBlock();
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    adminOne->Start(false);
+    adminTwo->Start(false);
+
+    while (!adminOne->IsSynced() || !adminTwo->IsSynced()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    std::vector<Keten::Node*> activeNodes = { seedNode.get(), adminOne.get(), adminTwo.get(), nonAdminNode.get() };
+    std::vector<std::string> allKeys = {
+        seedNode->GetPublicKey(), adminOne->GetPublicKey(), adminTwo->GetPublicKey(), nonAdminNode->GetPublicKey()
+    };
+
+    VerifyNetworkConsensus(activeNodes, allKeys);
+
+    std::println("\n[FASE 3] First Stress Wave...");
+    SpamTransactions(*nonAdminNode, adminOne->GetPublicKey(), TRANSACTION_COUNT, 5);
+    SpamTransactions(*seedNode, adminTwo->GetPublicKey(), TRANSACTION_COUNT, 10);
+
+    while (nonAdminNode->GetChainHeight() < seedNode->GetChainHeight() ||
+        !seedNode->IsDoneMinting() || !adminOne->IsDoneMinting() || !adminTwo->IsDoneMinting()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    if (!VerifyNetworkConsensus(activeNodes, allKeys)) return 1;
+
+    std::println("\n[FASE 4] Introducing Late Joiner Node...");
+    auto lateJoinerNode = std::make_unique<Keten::Node>("4459", "127.0.0.1", "4455");
+    SyncAdmins({ lateJoinerNode.get() }, adminKeys);
+    allKeys.push_back(lateJoinerNode->GetPublicKey());
+    activeNodes.push_back(lateJoinerNode.get());
+    lateJoinerNode->Start(false);
+
+    while (!lateJoinerNode->IsSynced()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    std::println("\nLate joiner synced");
+    if (!VerifyNetworkConsensus(activeNodes, allKeys)) return 1;
+
+    std::println("\n[FASE 5] Second Stress Wave (Testing Late Joiner Sync)...");
+    lateJoinerNode->SendTransaction(10, seedNode->GetPublicKey());
+    SpamTransactions(*adminOne, lateJoinerNode->GetPublicKey(), 50, 100);
+
+    std::println("Waiting for final block minting (8s)...");
+    std::this_thread::sleep_for(std::chrono::seconds(8));
+
+    std::println("\n[FASE 6] Final Global Consensus Validation...");
+    if (!VerifyNetworkConsensus(activeNodes, allKeys)) return 1;
+
+    std::println("\nSUCCESS: Network survived advanced stress test!");
     return 0;
 }
